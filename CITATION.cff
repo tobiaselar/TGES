@@ -1,0 +1,21 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: TGES
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Tobias Ellegaard
+    family-names: Larsen
+    email: tobias.e.larsen@gmail.com
+    affiliation: University of Copenhagen
+repository-code: 'https://github.com/tobiaselar/TGES'
+abstract: >-
+  This is the code used for implementing Temporal Greedy
+  Equivalence Search (TGES) in R. Created for a thesis at
+  UCPH.
+version: 1.0.0
+date-released: '2024-04-19'
