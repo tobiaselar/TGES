@@ -1,0 +1,318 @@
+---
+title: "Comp time of tges"
+output: html_document
+date: '2024-04-10'
+---
+```{r}
+library(tpc)
+library(conflicted)
+conflict_prefer("tpc", "tpc")
+source("TGES_function.R")
+source("Simulate_functions.R")
+
+```
+
+```{r}
+tges_time <- function(score,order = rep(1,score$pp.dat$vertex.count), #set default order as all 1, add 
+                 verbose = FALSE){
+  step_time <- 0
+  bg_time <- 0
+  node.numbers <- 1:score$pp.dat$vertex.count
+  essgraph <- new("TEssGraph", nodes = as.character(node.numbers), score = score)
+  Forbidden.edges <- essgraph$.in.edges #list of nodes all with integer(0) entry
+  node.names <- score$.nodes
+  num.bidir <- 0
+  num.directed <- 0
+  for (n in node.numbers){
+    Forbidden.edges[[n]] <- node.numbers[order[n]<order]
+  }
+  
+  cont <- TRUE
+  while(cont) {
+    cont <- FALSE
+    runwhile <- TRUE
+    while(runwhile){
+      
+      step_start_time <- Sys.time()
+      
+      tempstep <- essgraph$greedy.step("forward", verbose = verbose)
+      
+      step_time <- step_time + (Sys.time() - step_start_time)
+      
+      runwhile <- as.logical(tempstep[1]) #Runs 1 extra round of while loops, but equally as many calls of the greedy.step
+      if (runwhile){cont <- TRUE}
+      
+      
+      for (i in names(tempstep[-1])){ #Run through the nodes that have been changed
+        in.node.edges <- tempstep[-1][[i]] #save the in.node edges of node i
+        forbidden.node.edges <- Forbidden.edges[[as.numeric(i)]]
+        removed.edges <- in.node.edges[in.node.edges %in% forbidden.node.edges] #List of edges to be removed
+        if (length(removed.edges) > 0){
+          bgx <- rep(as.numeric(i),length(removed.edges))
+          bgy <- removed.edges
+          
+          bg_start_time <- Sys.time()
+          
+          amatbg <- addBgKnowledge(gInput = createAdjMatrixFromList(essgraph$.in.edges), x = bgx, y = bgy,verbose = verbose)
+          
+          bg_time <- bg_time + (Sys.time() - bg_start_time)
+          
+          no.forbidden.edges <- createListFromAdjMatrix(amatbg)
+          essgraph$.in.edges <- no.forbidden.edges
+        }
+        
+      }
+    } 
+    runwhile <- TRUE
+    while(runwhile){
+      
+      step_start_time <- Sys.time()
+      
+      tempstep <- essgraph$greedy.step("backward", verbose = verbose)
+      
+      step_time <- step_time + (Sys.time() - step_start_time)
+      
+      runwhile <- as.logical(tempstep[1]) #Runs 1 extra round of while loops, but equally as many calls of the greedy.step
+      if (runwhile){cont <- TRUE}
+      
+      for (i in names(tempstep[-1])){ #Run through the nodes that have been changed
+        in.node.edges <- tempstep[-1][[i]] #save the in.node edges of node i
+        forbidden.node.edges <- Forbidden.edges[[as.numeric(i)]]
+        removed.edges <- in.node.edges[in.node.edges %in% forbidden.node.edges] #List of edges to be removed
+        if (length(removed.edges) > 0){
+          bgx <- rep(as.numeric(i),length(removed.edges))
+          bgy <- removed.edges
+          
+          bg_start_time <- Sys.time()
+          
+          amatbg <- addBgKnowledge(gInput = createAdjMatrixFromList(essgraph$.in.edges), x = bgx, y = bgy, verbose = verbose)
+          
+          bg_time <- bg_time + (Sys.time() - bg_start_time)
+          
+          no.forbidden.edges <- createListFromAdjMatrix(amatbg)
+          essgraph$.in.edges <- no.forbidden.edges
+        }
+        
+      }
+    }
+    runwhile <- TRUE
+    while(runwhile){
+      
+      step_start_time <- Sys.time()
+      
+      tempstep <- essgraph$greedy.step("turning", verbose = verbose)
+      
+      step_time <- step_time + (Sys.time() - step_start_time)
+      
+      runwhile <- as.logical(tempstep[1]) #Runs 1 extra round of while loops, but equally as many calls of the greedy.step
+      if (runwhile){cont <- TRUE}
+      
+      for (i in names(tempstep[-1])){ #Run through the nodes that have been changed
+        in.node.edges <- tempstep[-1][[i]] #save the in.node edges of node i
+        forbidden.node.edges <- Forbidden.edges[[as.numeric(i)]]
+        removed.edges <- in.node.edges[in.node.edges %in% forbidden.node.edges] #List of edges to be removed
+        if (length(removed.edges) > 0){
+          bgx <- rep(as.numeric(i),length(removed.edges))
+          bgy <- removed.edges
+          
+          bg_start_time <- Sys.time()
+          
+          amatbg <- addBgKnowledge(gInput = createAdjMatrixFromList(essgraph$.in.edges), x = bgx, y = bgy, verbose = verbose)
+          
+          bg_time <- bg_time + (Sys.time() - bg_start_time)
+          
+          no.forbidden.edges <- createListFromAdjMatrix(amatbg)
+          essgraph$.in.edges <- no.forbidden.edges
+        }
+        
+      }
+    }
+
+  }
+  essgraph$.nodes <- node.names # Save names of nodes
+  names(essgraph$.in.edges) <- node.names # Save names of nodes
+  if (verbose){cat("Number of edges directed", num.bidir,"\nNumber of directed edges removed", num.directed, "\n")}
+  return(c(step_time, bg_time))
+}
+```
+
+
+```{r}
+n <- 1000
+lB <- 0
+uB <- 1
+k <- 10
+from <- 3
+to <- 25
+num_no_vec <- seq(from,to)
+diff_node <- (to+1)-from
+
+dftime <- data.frame(step_time = rep(NA,k) 
+                     ,bg_time = rep(NA,k)
+                     ,ges_time = rep(NA,k)
+                     ,pcalg_ges_time = rep(NA,k)
+                     ,tpc_time = rep(NA,k))
+df_node_time <- data.frame(step_time = rep(NA,diff_node) 
+                     ,bg_time = rep(NA,diff_node)
+                     ,ges_time = rep(NA,diff_node)
+                     ,pcalg_ges_time = rep(NA,diff_node)
+                     ,tpc_time = rep(NA,diff_node)
+                     ,Num_nodes = rep(NA,diff_node))
+set.seed(1234)
+nn <- 1
+for (num_no in num_no_vec){
+for (i in 1:k){
+incpar <- runif(1,0,1)
+accpar <- runif(1,0,1)
+#num_no <- sample(7:20,1)
+num_ti <- sample(x = 2:min((num_no-1),8),size = 1)
+if (num_no == 3) {num_ti <- 2}
+tior <- sort(c(sample(c(1:num_ti),(num_no-num_ti),replace = T),1:num_ti))
+tino <- c()
+for (o in 1:num_ti){
+  tino <- c(tino,sum(tior == o))
+}
+emptyDAG <- T
+while (emptyDAG){ #Make sure the DAG generated is not all zeroes
+  weightadjmat <- randtierDAG(incpar,accpar,tino, lB = lB, uB = uB)
+  emptyDAG <- (sum(weightadjmat) == 0)
+}
+  
+data <- rmvTDAG(n, weightadjmat)
+adjmat <- ceiling(weightadjmat/uB)
+
+t_score <- new("GaussL0penIntScoreORDER", order = tior
+                , data = data 
+                ,  use.cpp = F)
+ges_score <- new("GaussL0penIntScoreORDER"
+                , data = data 
+                ,  use.cpp = F)
+pcalg_ges_score <- new("GaussL0penIntScore", data = data
+                      , use.cpp = F
+                      )
+
+t_time <- tges_time(t_score,order = tior)
+g_time <- tges_time(ges_score)
+
+pcalg_g_start <- Sys.time()
+run_pcalg_fit <- ges(pcalg_ges_score)
+pcalg_g_time <- Sys.time() - pcalg_g_start
+
+tpc_start <- Sys.time()
+run_tpc_fit <- tpc(suffStat = list(C = cor(data), n = n),
+                           indepTest = gaussCItest, alpha = 0.01, tiers = tior, p = num_no)
+tpc_time <- Sys.time() - tpc_start
+
+  
+dftime[i,] <-  c(t_time,g_time[1],pcalg_g_time,tpc_time)
+}
+ df_node_time$Num_nodes[nn] <- num_no
+ df_node_time$step_time[nn] <- sum(dftime$step_time)
+ df_node_time$bg_time[nn] <- sum(dftime$bg_time)
+ df_node_time$ges_time[nn] <- sum(dftime$ges_time)
+ df_node_time$pcalg_ges_time[nn] <- sum(dftime$pcalg_ges_time)
+ df_node_time$tpc_time[nn] <- sum(dftime$tpc_time)
+ 
+ print(nn)
+ nn = nn + 1
+ 
+ 
+}
+#save.image("C:/Users/qfl301/Desktop/Læs/Læs/CompTime.RData")
+```
+
+```{r}
+
+load("CompTime.RData")
+
+```
+
+
+# Make plot of computational times
+```{r}
+library(ggplot2)
+library(tidyr)
+library(tayloRswift)
+library(patchwork)
+
+theme_set(theme_bw())
+```
+
+```{r}
+df_node_time$TGES_time <- df_node_time$step_time + df_node_time$bg_time
+df_long_step <- df_node_time[,c(1,3,6,7)] %>% pivot_longer(
+  cols = -Num_nodes,
+  names_to = "Algorithm",
+  values_to = "Time"
+)
+
+df_long_TGES <- df_node_time[,c(1,2,6)] %>% pivot_longer(
+  cols = -Num_nodes,
+  names_to = "Algorithm",
+  values_to = "Time"
+)
+
+df_long_all <- df_node_time[,-c(1,2)] %>% pivot_longer(
+  cols = -Num_nodes,
+  names_to = "Algorithm",
+  values_to = "Time"
+)
+```
+
+# Only for steps. Interesting becasuse we wish to compare how much faster the steps of GES are now that the we restrict with background knowledge
+```{r}
+df_long <- df_long_step
+df_long$Algorithm <- factor(df_long$Algorithm, levels = c("step_time", "bg_time", "ges_time", "pcalg_ges_time", "tpc_time","TGES_time"),
+                            labels = c("TGES Step", "TGES BG Knowledge", "GES step", "PCALG GES step", "TPC","TGES All"))
+
+### Step 3: Plot with ggplot2
+
+tayRmod <- tayloRswift::swift_pal(palette = "lover")(n = 6)[c(1,4,6)]
+
+# Plotting with ggplot2
+ggplot(data = df_long, aes(x = Num_nodes, y = Time, color = Algorithm)) +
+  geom_line() + # Line plot
+  geom_point() + # Add points
+  labs(title = "Computational Time over Nodes", x = "Number of Nodes", y = "Time (seconds) of 10 iterations") +
+  #ylim(0,450) +
+  scale_color_manual(values = tayRmod)
+  #scale_color_taylor(palette = "lover")#scale_color_brewer(palette = "Dark2") # Use a color palette for better distinction
+```
+
+```{r}
+df_long <- df_long_TGES
+df_long$Algorithm <- factor(df_long$Algorithm, levels = c("step_time", "bg_time", "ges_time", "pcalg_ges_time", "tpc_time","TGES_time"),
+                            labels = c("TGES Step", "TGES BG Knowledge", "GES step", "PCALG GES step", "TPC","TGES All"))
+
+### Step 3: Plot with ggplot2
+
+tayRmod <- tayloRswift::swift_pal(palette = "lover")(n = 6)[c(1,2)]
+
+# Plotting with ggplot2
+ggplot(data = df_long, aes(x = Num_nodes, y = Time, color = Algorithm)) +
+  geom_line() + # Line plot
+  geom_point() + # Add points
+  labs(title = "Computational Time over Nodes", x = "Number of Nodes", y = "Time (seconds) of 10 iterations") +
+  scale_color_manual(values = tayRmod)
+  #scale_color_manual(values = tayRmod)#scale_color_taylor(palette = "lover")#scale_color_brewer(palette = "Dark2") # Use a color palette for better distinction
+```
+
+```{r}
+df_long <- df_long_all
+df_long$Algorithm <- factor(df_long$Algorithm, levels = c("step_time", "bg_time", "ges_time", "pcalg_ges_time", "tpc_time","TGES_time"),
+                            labels = c("TGES Step", "TGES BG Knowledge", "GES step", "PCALG GES step", "TPC","TGES All"))
+
+### Step 3: Plot with ggplot2
+my_colors <- RColorBrewer::brewer.pal(4, "Blues")[2:4]
+tayRmod <- tayloRswift::swift_pal(palette = "lover")(n = 7)[c(5,4,6,7)]
+
+
+# Plotting with ggplot2
+ggplot(data = df_long, aes(x = Num_nodes, y = Time, color = Algorithm)) +
+  geom_line() + # Line plot
+  geom_point() + # Add points
+  labs(title = "Computational Time over Nodes", x = "Number of Nodes", y = "Time (seconds) of 10 iterations") +
+  scale_color_manual(values = tayRmod)
+  #ylim(0,450) +
+  #scale_color_taylor(palette = "lover")#scale_color_brewer(palette = "Dark2") # Use a color palette for better distinction
+```
