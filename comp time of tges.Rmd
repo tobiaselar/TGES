@@ -172,11 +172,9 @@ tino <- c()
 for (o in 1:num_ti){
   tino <- c(tino,sum(tior == o))
 }
-emptyDAG <- T
-while (emptyDAG){ #Make sure the DAG generated is not all zeroes
-  weightadjmat <- randtierDAG(incpar,accpar,tino, lB = lB, uB = uB)
-  emptyDAG <- (sum(weightadjmat) == 0)
-}
+
+weightadjmat <- randtierDAG(incpar,accpar,tino, lB = lB, uB = uB)
+
   
 data <- rmvTDAG(n, weightadjmat)
 adjmat <- ceiling(weightadjmat/uB)
