@@ -189,12 +189,9 @@ for (n in n_vec){
           
           set.seed(t+100)
           for (i in 1:k){
-            emptyDAG <- T
-            while (emptyDAG){ #Make sure the DAG generated is not all zeroes
-              weightadjmat <- randtierDAG(incpar,accpar,tino, lB = lB, uB = uB)
-              emptyDAG <- (sum(weightadjmat) == 0)
-            }
-              
+            
+            weightadjmat <- randtierDAG(incpar,accpar,tino, lB = lB, uB = uB)
+            
             data <- rmvTDAG(n, weightadjmat)
             adjmat <- ceiling(weightadjmat/uB)
             adjmat <- dag2tmpdag(adjmatrix = adjmat,odr = tior)

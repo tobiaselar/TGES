@@ -46,6 +46,8 @@ simdf <- data.frame(adjprecision = rep(NA,numdfperf),
                            adjrecall = rep(NA,numdfperf),
                            dirprecision = rep(NA,numdfperf),
                            dirrecall = rep(NA,numdfperf),
+                           intierdirprecision = rep(NA,numdfperf),
+                           intierdirrecall = rep(NA,numdfperf),
                            Inpar = rep(NA,numdfperf),
                            Acpar = rep(NA,numdfperf),
                            Numtiers = rep(NA,numdfperf),
@@ -55,6 +57,8 @@ tpc_01df <- data.frame(adjprecision = rep(NA,numdfperf),
                            adjrecall = rep(NA,numdfperf),
                            dirprecision = rep(NA,numdfperf),
                            dirrecall = rep(NA,numdfperf),
+                           intierdirprecision = rep(NA,numdfperf),
+                           intierdirrecall = rep(NA,numdfperf),
                            Inpar = rep(NA,numdfperf),
                            Acpar = rep(NA,numdfperf),
                            Numtiers = rep(NA,numdfperf),
@@ -104,11 +108,9 @@ uB <- 1
             tino <- c(tino,sum(tior == o))
           }
           
-            emptyDAG <- T
-            while (emptyDAG){ #Make sure the DAG generated is not all zeroes
-              weightadjmat <- randtierDAG(incpar,accpar,tino, lB = lB, uB = uB)
-              emptyDAG <- (sum(weightadjmat) == 0)
-            }
+            
+            weightadjmat <- randtierDAG(incpar,accpar,tino, lB = lB, uB = uB)
+            
               
             data <- rmvTDAG(n, weightadjmat)
             adjmat <- ceiling(weightadjmat/uB)
@@ -189,17 +191,23 @@ uB <- 1
             
             adjconf <- confusion(simple_t_est_adjmat,adjmat, type = "adj")
             dirconf <- confusion(simple_t_est_adjmat,adjmat, type = "dir")
+            intierdirconf <- intier_confusion(simple_t_est_adjmat,adjmat, type = "dir", tior)
             simdf$adjprecision[i] <-  precision(adjconf)
             simdf$adjrecall[i] <-  recall(adjconf)
             simdf$dirprecision[i] <-  precision(dirconf)
             simdf$dirrecall[i] <-  recall(dirconf)
+            simdf$intierdirprecision[i] <- precision(intierdirconf)
+            simdf$intierdirrecall[i] <- recall(intierdirconf)
             
             adjconf <- confusion(tpc_01_est_adjmat,adjmat, type = "adj")
             dirconf <- confusion(tpc_01_est_adjmat,adjmat, type = "dir")
+            intierdirconf <- intier_confusion(tpc_01_est_adjmat,adjmat, type = "dir", tior)
             tpc_01df$adjprecision[i] <-  precision(adjconf)
             tpc_01df$adjrecall[i] <-  recall(adjconf)
             tpc_01df$dirprecision[i] <-  precision(dirconf)
             tpc_01df$dirrecall[i] <-  recall(dirconf)
+            tpc_01df$intierdirprecision[i] <- precision(intierdirconf)
+            tpc_01df$intierdirrecall[i] <- recall(intierdirconf)
             
             adjconf <- confusion(tpc_001_est_adjmat,adjmat, type = "adj")
             dirconf <- confusion(tpc_001_est_adjmat,adjmat, type = "dir")
@@ -241,12 +249,12 @@ uB <- 1
 end_time <- Sys.time()
 execution_time <- end_time - start_time
 print(execution_time)
-#save.image(file = "boxplotdata.Rdata")
+save.image(file = "boxplotdataNEW.Rdata")
 ```
 
 # Make boxplots
 ```{r}
-load("boxplotdata.Rdata")
+load("boxplotdataNEW.Rdata")
 library(ggplot2)
 library(tidyr)
 library(tayloRswift)
@@ -432,12 +440,16 @@ mean(tpc_01df$Comptime)
 mean(tpc_001df$Comptime)
 mean(tpc_0001df$Comptime)
 ```
-# TGES compared to GES
+# In tier
 ```{r}
 intierdirpredf <- data.frame(TGES = tgesdf$intierdirprecision,
-                       GES = gesdf$intierdirprecision)
+                       GES = gesdf$intierdirprecision,
+                       Simple_TGES = simdf$intierdirprecision,
+                       TPC_01 = tpc_01df$intierdirprecision)
 intierdirrecdf <- data.frame(TGES = tgesdf$intierdirrecall,
-                       GES = gesdf$intierdirrecall)
+                       GES = gesdf$intierdirrecall,
+                       Simple_TGES = simdf$intierdirrecall,
+                       TPC_01 = tpc_01df$intierdirrecall)
 intierdirpredf <- na.omit(intierdirpredf)
 intierdirrecdf <- na.omit(intierdirrecdf)
 ```
@@ -445,10 +457,10 @@ intierdirrecdf <- na.omit(intierdirrecdf)
 ```{r}
 # Reshape the data frame to long format
 
-intierdirpredf_long <- pivot_longer(intierdirpredf, cols = c(TGES, GES), names_to = "Method", values_to = "value")
-intierdirrecdf_long <- pivot_longer(intierdirrecdf, cols = c(TGES, GES), names_to = "Method", values_to = "value")
+intierdirpredf_long <- pivot_longer(intierdirpredf, cols = c(TGES, GES, Simple_TGES, TPC_01), names_to = "Method", values_to = "value")
+intierdirrecdf_long <- pivot_longer(intierdirrecdf, cols = c(TGES, GES, Simple_TGES, TPC_01), names_to = "Method", values_to = "value")
 
-tayRmod <- tayloRswift::swift_pal(palette = "lover")(n = 6)[c(4,6)]
+tayRmod <- tayloRswift::swift_pal(palette = "lover")(n = 6)[c(4,1,6,5)]
 
 # Plot the boxplot with colored fills
 p5 <- ggplot(intierdirpredf_long, aes(x = Method, y = value, fill = Method)) +
@@ -457,7 +469,7 @@ p5 <- ggplot(intierdirpredf_long, aes(x = Method, y = value, fill = Method)) +
         ylab(NULL) +
         scale_fill_manual(values = tayRmod,guide = "none") +
         #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Precision of directions")
+        labs(title = "Precision of in tier directions")
         #+ ylim(0,1)
 p6 <- ggplot(intierdirrecdf_long, aes(x = Method, y = value, fill = Method)) +
         geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
@@ -465,12 +477,43 @@ p6 <- ggplot(intierdirrecdf_long, aes(x = Method, y = value, fill = Method)) +
         ylab(NULL) +
         scale_fill_manual(values = tayRmod,guide = "none") +
         #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Recall of directions")
+        labs(title = "Recall of in tier directions")
         #+ ylim(0,1)
 # Use patchwork to arrange the plots next to each other
 (p5 + p6) +
   plot_layout(ncol = 2) 
 ```
+```{r}
+# Reshape the data frame to long format
+
+intierdirpredf_long <- pivot_longer(intierdirpredf, cols = c(TGES, GES, Simple_TGES, TPC_01), names_to = "Method", values_to = "value")
+intierdirrecdf_long <- pivot_longer(intierdirrecdf, cols = c(TGES, GES, Simple_TGES, TPC_01), names_to = "Method", values_to = "value")
+
+tayRmod <- tayloRswift::swift_pal(palette = "lover")(n = 6)[c(4,1,6,5)]
+
+# Plot the boxplot with colored fills
+p5 <- ggplot(intierdirpredf_long, aes(x = Method, y = value, fill = Method)) +
+        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        scale_fill_manual(values = tayRmod,guide = "none") +
+        #scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Precision of in tier directions")
+        #+ ylim(0,1)
+p6 <- ggplot(intierdirrecdf_long, aes(x = Method, y = value, fill = Method)) +
+        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        scale_fill_manual(values = tayRmod,guide = "none") +
+        #scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Recall of in tier directions")
+        #+ ylim(0,1)
+# Use patchwork to arrange the plots next to each other
+(p5 + p6) +
+  plot_layout(ncol = 2) 
+```
+
+
 ```{r}
 # Reshape the data frame to long format
 adjpredf_long <- pivot_longer(adjpredf, cols = c(TGES, Simple_TGES, GES, TPC_01, TPC_001, TPC_0001), names_to = "Method", values_to = "value")

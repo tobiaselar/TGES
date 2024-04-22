@@ -8,20 +8,27 @@ randtierDAG <- function(incpar, accpar, tino, lB = 0, uB = 1){
   for (o in 1:length(tino)){
     tior <- c(tior,rep(o,tino[o]))
   }
-  #In tier DAGs
-  for (i in 1:length(tino)){
-    if (tino[i] > 1){
-      tempDAG <- r.gauss.pardag(p = tino[i], prob = incpar, lbe = lB, ube = uB, neg.coef = F)
-      adjmat[which(tior == i),which(tior == i)] <- t(tempDAG$weight.mat())
-      #createAdjMatrixFromList(tempDAG$.in.edges) 
+  
+  emptyDAG <- T
+  while (emptyDAG) {
+      #In tier DAGs
+    for (i in 1:length(tino)){
+      if (tino[i] > 1){
+        tempDAG <- r.gauss.pardag(p = tino[i], prob = incpar, lbe = lB, ube = uB, neg.coef = F)
+        adjmat[which(tior == i),which(tior == i)] <- t(tempDAG$weight.mat())
+        #createAdjMatrixFromList(tempDAG$.in.edges) 
+      }
     }
+    # Make across tier edges
+    for (n in 1:(length(tino)-1)){
+      plustier <- which(tior > n)
+      tier <- which(tior == n)
+      adjmat[plustier,tier] <- rbinom(n = length(plustier)*length(tier), size = 1,prob = accpar)*runif(length(plustier)*length(tier), min = lB, max = uB)
+    }
+    emptyDAG <- (sum(adjmat) == 0)
+    
   }
-  # Make across tier edges
-  for (n in 1:(length(tino)-1)){
-    plustier <- which(tior > n)
-    tier <- which(tior == n)
-    adjmat[plustier,tier] <- rbinom(n = length(plustier)*length(tier), size = 1,prob = accpar)*runif(length(plustier)*length(tier), min = lB, max = uB)
-  }
+  
   return(adjmat)
   
 }
