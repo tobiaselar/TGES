@@ -249,12 +249,12 @@ uB <- 1
 end_time <- Sys.time()
 execution_time <- end_time - start_time
 print(execution_time)
-save.image(file = "boxplotdataNEW.Rdata")
+#save.image(file = "boxplotdata.Rdata")
 ```
 
 # Make boxplots
 ```{r}
-load("boxplotdataNEW.Rdata")
+load("boxplotdata.Rdata")
 library(ggplot2)
 library(tidyr)
 library(tayloRswift)
@@ -483,35 +483,6 @@ p6 <- ggplot(intierdirrecdf_long, aes(x = Method, y = value, fill = Method)) +
 (p5 + p6) +
   plot_layout(ncol = 2) 
 ```
-```{r}
-# Reshape the data frame to long format
-
-intierdirpredf_long <- pivot_longer(intierdirpredf, cols = c(TGES, GES, Simple_TGES, TPC_01), names_to = "Method", values_to = "value")
-intierdirrecdf_long <- pivot_longer(intierdirrecdf, cols = c(TGES, GES, Simple_TGES, TPC_01), names_to = "Method", values_to = "value")
-
-tayRmod <- tayloRswift::swift_pal(palette = "lover")(n = 6)[c(4,1,6,5)]
-
-# Plot the boxplot with colored fills
-p5 <- ggplot(intierdirpredf_long, aes(x = Method, y = value, fill = Method)) +
-        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
-        xlab(NULL) + 
-        ylab(NULL) +
-        scale_fill_manual(values = tayRmod,guide = "none") +
-        #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Precision of in tier directions")
-        #+ ylim(0,1)
-p6 <- ggplot(intierdirrecdf_long, aes(x = Method, y = value, fill = Method)) +
-        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
-        xlab(NULL) + 
-        ylab(NULL) +
-        scale_fill_manual(values = tayRmod,guide = "none") +
-        #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Recall of in tier directions")
-        #+ ylim(0,1)
-# Use patchwork to arrange the plots next to each other
-(p5 + p6) +
-  plot_layout(ncol = 2) 
-```
 
 
 ```{r}
@@ -543,4 +514,173 @@ p2 <- ggplot(adjrecdf_long, aes(x = Method, y = value, fill = Method)) +
 # Use patchwork to arrange the plots next to each other
 (p1 + p2) +
   plot_layout(ncol = 2) 
+```
+
+# Violin plots instead of boxplot
+```{r}
+# Reshape the data frame to long format
+adjpredf_long <- pivot_longer(adjpredf, cols = c(TGES, Simple_TGES, TPC_01, TPC_001, TPC_0001), names_to = "Method", values_to = "value")
+adjrecdf_long <- pivot_longer(adjrecdf, cols = c(TGES, Simple_TGES, TPC_01, TPC_001, TPC_0001), names_to = "Method", values_to = "value")
+dirpredf_long <- pivot_longer(dirpredf, cols = c(TGES, Simple_TGES, TPC_01, TPC_001, TPC_0001), names_to = "Method", values_to = "value")
+dirrecdf_long <- pivot_longer(dirrecdf, cols = c(TGES, Simple_TGES, TPC_01, TPC_001, TPC_0001), names_to = "Method", values_to = "value")
+
+#New taylor colors
+tayRmod <- tayloRswift::swift_pal(palette = "lover")(n = 6)[c(1,6,2,3,5)]
+
+
+# Plot the boxplot with colored fills
+p1 <- ggplot(adjpredf_long, aes(x = Method, y = value, fill = Method)) +
+        geom_violin(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        scale_fill_manual(values = tayRmod,guide = "none") +
+        #scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Precision of adjancencies")
+        #+ ylim(0,1)
+p2 <- ggplot(adjrecdf_long, aes(x = Method, y = value, fill = Method)) +
+        geom_violin(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        scale_fill_manual(values = tayRmod,guide = "none") +
+        #scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Recall of adjancencies")
+        #+ ylim(0,1)
+p3 <- ggplot(dirpredf_long, aes(x = Method, y = value, fill = Method)) +
+        geom_violin(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        scale_fill_manual(values = tayRmod,guide = "none") +
+        #scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Precision of directions")
+        #+ ylim(0,1)
+p4 <- ggplot(dirrecdf_long, aes(x = Method, y = value, fill = Method)) +
+        geom_violin(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        scale_fill_manual(values = tayRmod,guide = "none") +
+        #scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Recall of directions")
+        #+ ylim(0,1)
+# Use patchwork to arrange the plots next to each other
+(p1 + p2 + p3 + p4) +
+  plot_layout(ncol = 2) 
+
+# Reshape the data frame to long format
+adjpredf_long <- pivot_longer(adjpredf, cols = c( TPC_01, TPC_001, TPC_0001), names_to = "Method", values_to = "value")
+adjrecdf_long <- pivot_longer(adjrecdf, cols = c(TPC_01, TPC_001, TPC_0001), names_to = "Method", values_to = "value")
+dirpredf_long <- pivot_longer(dirpredf, cols = c(TPC_01, TPC_001, TPC_0001), names_to = "Method", values_to = "value")
+dirrecdf_long <- pivot_longer(dirrecdf, cols = c(TPC_01, TPC_001, TPC_0001), names_to = "Method", values_to = "value")
+
+#New taylor colors
+tayRmod <- tayloRswift::swift_pal(palette = "lover")(n = 6)[c(2,3,5)]
+
+# Plot the boxplot with colored fills
+p1 <- ggplot(adjpredf_long, aes(x = Method, y = value, fill = Method)) +
+        geom_violin(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        scale_fill_manual(values = tayRmod,guide = "none") +
+        #scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Precision of adjancencies")
+        #+ ylim(0,1)
+p2 <- ggplot(adjrecdf_long, aes(x = Method, y = value, fill = Method)) +
+        geom_violin(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        scale_fill_manual(values = tayRmod,guide = "none") +
+        #scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Recall of adjancencies")
+        #+ ylim(0,1)
+p3 <- ggplot(dirpredf_long, aes(x = Method, y = value, fill = Method)) +
+        geom_violin(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        scale_fill_manual(values = tayRmod,guide = "none") +
+        #scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Precision of directions")
+        #+ ylim(0,1)
+p4 <- ggplot(dirrecdf_long, aes(x = Method, y = value, fill = Method)) +
+        geom_violin(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        scale_fill_manual(values = tayRmod,guide = "none") +
+        #scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Recall of directions")
+        #+ ylim(0,1)
+# Use patchwork to arrange the plots next to each other
+(p1 + p2 + p3 + p4) +
+  plot_layout(ncol = 2) 
+
+# Reshape the data frame to long format
+adjpredf_long <- pivot_longer(adjpredf, cols = c(TGES, Simple_TGES, TPC_01), names_to = "Method", values_to = "value")
+adjrecdf_long <- pivot_longer(adjrecdf, cols = c(TGES, Simple_TGES, TPC_01), names_to = "Method", values_to = "value")
+dirpredf_long <- pivot_longer(dirpredf, cols = c(TGES, Simple_TGES, TPC_01), names_to = "Method", values_to = "value")
+dirrecdf_long <- pivot_longer(dirrecdf, cols = c(TGES, Simple_TGES, TPC_01), names_to = "Method", values_to = "value")
+
+#New taylor colors
+tayRmod <- tayloRswift::swift_pal(palette = "lover")(n = 6)[c(1,6,5)]
+
+# Plot the boxplot with colored fills
+p1 <- ggplot(adjpredf_long, aes(x = Method, y = value, fill = Method)) +
+        geom_violin(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        scale_fill_manual(values = tayRmod,guide = "none") +
+        #scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Precision of adjancencies")
+        #+ ylim(0,1)
+p2 <- ggplot(adjrecdf_long, aes(x = Method, y = value, fill = Method)) +
+        geom_violin(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        scale_fill_manual(values = tayRmod,guide = "none") +
+        #scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Recall of adjancencies")
+        #+ ylim(0,1)
+p3 <- ggplot(dirpredf_long, aes(x = Method, y = value, fill = Method)) +
+        geom_violin(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        scale_fill_manual(values = tayRmod,guide = "none") +
+        #scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Precision of directions")
+        #+ ylim(0,1)
+p4 <- ggplot(dirrecdf_long, aes(x = Method, y = value, fill = Method)) +
+        geom_violin(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        scale_fill_manual(values = tayRmod,guide = "none") +
+        #scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Recall of directions")
+        #+ ylim(0,1)
+# Use patchwork to arrange the plots next to each other
+(p1 + p2 + p3 + p4) +
+  plot_layout(ncol = 2) 
+# Reshape the data frame to long format
+
+intierdirpredf_long <- pivot_longer(intierdirpredf, cols = c(TGES, GES, Simple_TGES, TPC_01), names_to = "Method", values_to = "value")
+intierdirrecdf_long <- pivot_longer(intierdirrecdf, cols = c(TGES, GES, Simple_TGES, TPC_01), names_to = "Method", values_to = "value")
+
+tayRmod <- tayloRswift::swift_pal(palette = "lover")(n = 6)[c(4,1,6,5)]
+
+# Plot the boxplot with colored fills
+p5 <- ggplot(intierdirpredf_long, aes(x = Method, y = value, fill = Method)) +
+        geom_violin(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        scale_fill_manual(values = tayRmod,guide = "none") +
+        #scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Precision of in tier directions")
+        #+ ylim(0,1)
+p6 <- ggplot(intierdirrecdf_long, aes(x = Method, y = value, fill = Method)) +
+        geom_violin(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        scale_fill_manual(values = tayRmod,guide = "none") +
+        #scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Recall of in tier directions")
+        #+ ylim(0,1)
+# Use patchwork to arrange the plots next to each other
+(p5 + p6) +
+  plot_layout(ncol = 2)
 ```
