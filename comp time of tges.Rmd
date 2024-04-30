@@ -235,6 +235,12 @@ library(patchwork)
 
 theme_set(theme_bw())
 ```
+# log transform time
+```{r}
+#df_node_time[,c(1,2,3,4,5,7)] <- log(df_node_time[,c(1,2,3,4,5,7)]) 
+```
+
+
 
 ```{r}
 df_node_time$TGES_time <- df_node_time$step_time + df_node_time$bg_time
@@ -269,7 +275,7 @@ tayRmod <- tayloRswift::swift_pal(palette = "lover")(n = 6)[c(1,4,6)]
 
 # Plotting with ggplot2
 ggplot(data = df_long, aes(x = Num_nodes, y = Time, color = Algorithm)) +
-  geom_line() + # Line plot
+  geom_line(lwd =1.2) + # Line plot
   geom_point() + # Add points
   labs(title = "Computational Time over Nodes", x = "Number of Nodes", y = "Time (seconds) of 10 iterations") +
   #ylim(0,450) +
@@ -288,7 +294,7 @@ tayRmod <- tayloRswift::swift_pal(palette = "lover")(n = 6)[c(1,2)]
 
 # Plotting with ggplot2
 ggplot(data = df_long, aes(x = Num_nodes, y = Time, color = Algorithm)) +
-  geom_line() + # Line plot
+  geom_line(lwd = 1.2) + # Line plot
   geom_point() + # Add points
   labs(title = "Computational Time over Nodes", x = "Number of Nodes", y = "Time (seconds) of 10 iterations") +
   scale_color_manual(values = tayRmod)
@@ -307,7 +313,7 @@ tayRmod <- tayloRswift::swift_pal(palette = "lover")(n = 7)[c(5,4,6,7)]
 
 # Plotting with ggplot2
 ggplot(data = df_long, aes(x = Num_nodes, y = Time, color = Algorithm)) +
-  geom_line() + # Line plot
+  geom_line(lwd = 1.2) + # Line plot
   geom_point() + # Add points
   labs(title = "Computational Time over Nodes", x = "Number of Nodes", y = "Time (seconds) of 10 iterations") +
   scale_color_manual(values = tayRmod)
