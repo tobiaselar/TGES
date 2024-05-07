@@ -432,6 +432,35 @@ p4 <- ggplot(dirrecdf_long, aes(x = Method, y = value, fill = Method)) +
   plot_layout(ncol = 2) 
 ```
 
+```{r}
+# Reshape the data frame to long format
+adjpredf_long <- pivot_longer(adjpredf, cols = c(TGES, GES), names_to = "Method", values_to = "value")
+adjrecdf_long <- pivot_longer(adjrecdf, cols = c(TGES, GES), names_to = "Method", values_to = "value")
+#New taylor colors
+tayRmod <- tayloRswift::swift_pal(palette = "lover")(n = 6)[c(4,6)]
+
+# Plot the boxplot with colored fills
+p1 <- ggplot(adjpredf_long, aes(x = Method, y = value, fill = Method)) +
+        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        scale_fill_manual(values = tayRmod,guide = "none") +
+        #scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Precision of adjancencies")
+        #+ ylim(0,1)
+p2 <- ggplot(adjrecdf_long, aes(x = Method, y = value, fill = Method)) +
+        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        scale_fill_manual(values = tayRmod,guide = "none") +
+        #scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Recall of adjancencies")
+        #+ ylim(0,1)
+# Use patchwork to arrange the plots next to each other
+(p1 + p2) +
+  plot_layout(ncol = 1) 
+```
+
 # comp time
 ```{r}
 mean(tgesdf$Comptime)

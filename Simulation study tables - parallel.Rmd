@@ -72,6 +72,8 @@ tges_perfomance <- data.frame(adjprecision = rep(NA,numdfperf),
                            adjrecall = rep(NA,numdfperf),
                            dirprecision = rep(NA,numdfperf),
                            dirrecall = rep(NA,numdfperf),
+                           intierdirprecision = rep(NA,numdfperf),
+                           intierdirrecall = rep(NA,numdfperf),
                            Obs = rep(NA,numdfperf),
                            Inpar = rep(NA,numdfperf),
                            Acpar = rep(NA,numdfperf),
@@ -94,6 +96,8 @@ tpc_perfomance <- data.frame(adjprecision = rep(NA,numdfperf),
                            adjrecall = rep(NA,numdfperf),
                            dirprecision = rep(NA,numdfperf),
                            dirrecall = rep(NA,numdfperf),
+                           intierdirprecision = rep(NA,numdfperf),
+                           intierdirrecall = rep(NA,numdfperf),
                            Obs = rep(NA,numdfperf),
                            Inpar = rep(NA,numdfperf),
                            Acpar = rep(NA,numdfperf),
@@ -187,7 +191,8 @@ for (n in n_vec){
                            intierdirprecision = rep(NA,k), intierdirrecall = rep(NA,k))
           
           tpcdf <- data.frame(adjprecision = rep(NA,k), adjrecall = rep(NA,k),
-                           dirprecision = rep(NA,k), dirrecall = rep(NA,k))
+                           dirprecision = rep(NA,k), dirrecall = rep(NA,k),
+                           intierdirprecision = rep(NA,k), intierdirrecall = rep(NA,k))
           
           tges_execution_time <- ges_execution_time <- sim_execution_time <- tpc_execution_time <- 0
           
@@ -198,7 +203,7 @@ for (n in n_vec){
                              .packages = c("pcalg","graph","RBGL","tpc","causalDisco")
                              ) %dopar% {
             source("TGES_classes_only.R")
-            iter_vec <- rep(NA,24)
+            iter_vec <- rep(NA,26)
             
             weightadjmat <- randtierDAG(incpar,accpar,tino, lB = lB, uB = uB)
             
@@ -221,7 +226,7 @@ for (n in n_vec){
             t_est_adjmat <- createAdjMatrixFromList(tges_fit$.in.edges)
             tges_end_time <- Sys.time()
             #tges_execution_time <- tges_execution_time + (tges_end_time - tges_start_time)
-            iter_vec[21] <- (tges_end_time - tges_start_time)
+            iter_vec[23] <- (tges_end_time - tges_start_time)
             
             #GES
             ges_start_time <- Sys.time()
@@ -229,14 +234,14 @@ for (n in n_vec){
             ges_est_adjmat <- createAdjMatrixFromList(ges_fit$essgraph$.in.edges)
             ges_end_time <- Sys.time()
             #ges_execution_time <- ges_execution_time + (ges_end_time - ges_start_time)
-            iter_vec[22] <- (ges_end_time - ges_start_time)
+            iter_vec[24] <- (ges_end_time - ges_start_time)
             
             #Simple TGES
             sim_start_time <- Sys.time()
             simple_t_est_adjmat <- ges_to_simple_tges_adj(ges_fit, tior)
             sim_end_time <- Sys.time()
             #sim_execution_time <- sim_execution_time + (sim_end_time - sim_start_time)
-            iter_vec[23] <- (sim_end_time - sim_start_time)
+            iter_vec[25] <- (sim_end_time - sim_start_time)
             
             #TPC
             tpc_start_time <- Sys.time()
@@ -245,7 +250,7 @@ for (n in n_vec){
             tpc_est_adjmat <- as(tpc_fit, "matrix")
             tpc_end_time <- Sys.time()
             #tpc_execution_time <- tpc_execution_time + (tpc_end_time - tpc_start_time)
-            iter_vec[24] <- (tpc_end_time - tpc_start_time)
+            iter_vec[26] <- (tpc_end_time - tpc_start_time)
             
             #Metrics
           
@@ -295,6 +300,7 @@ for (n in n_vec){
             
             adjconf <- confusion(tpc_est_adjmat,adjmat, type = "adj")
             dirconf <- confusion(tpc_est_adjmat,adjmat, type = "dir")
+            intierdirconf <- intier_confusion(tpc_est_adjmat,adjmat, type = "dir", tior)
             #tpcdf$adjprecision[i]
             iter_vec[17] <-  precision(adjconf)
             #tpcdf$adjrecall[i]
@@ -303,12 +309,21 @@ for (n in n_vec){
             iter_vec[19] <-  precision(dirconf)
             #tpcdf$dirrecall[i]
             iter_vec[20] <-  recall(dirconf)
+            #tpcdf$intierdirprecision[i]
+            iter_vec[21] <- precision(intierdirconf)
+            #tpcdf$intierdirrecall[i]
+            iter_vec[22] <- recall(intierdirconf)
             return(iter_vec)
             
           }
           #print percantage of simulation done
           count = count + 1 
           print(round(100*count/countdiv))
+          #Omit NA's from in tier conf
+          iter_df[(0 < rowSums(is.na(iter_df[,c(5,9,15,21)]))),c(5,9,15,21)] <- NA
+          
+          iter_df[(0 < rowSums(is.na(iter_df[,c(6,10,16,22)]))),c(6,10,16,22)] <- NA
+          
           #Input vector from foreach into df's
             tgesdf$adjprecision <- iter_df[,1] 
             tgesdf$adjrecall <- iter_df[,2]
@@ -330,10 +345,12 @@ for (n in n_vec){
             tpcdf$adjrecall <- iter_df[,18]
             tpcdf$dirprecision <- iter_df[,19]
             tpcdf$dirrecall <- iter_df[,20]
-            tges_execution_time <- sum(iter_df[,21])
-            ges_execution_time <- sum(iter_df[,22])
-            sim_execution_time <- sum(iter_df[,23])
-            tpc_execution_time <- sum(iter_df[,24]) 
+            tpcdf$intierdirprecision <- iter_df[,21]
+            tpcdf$intierdirrecall <- iter_df[,22]
+            tges_execution_time <- sum(iter_df[,23])
+            ges_execution_time <- sum(iter_df[,24])
+            sim_execution_time <- sum(iter_df[,25])
+            tpc_execution_time <- sum(iter_df[,26]) 
           
           #Input parameters
            tpc_perfomance$Obs[t] <- sim_perfomance$Obs[t] <- tges_perfomance$Obs[t] <- ges_perfomance$Obs[t] <- t_vs_ges_perfomance$Obs[t] <- t_vs_sim_perfomance$Obs[t] <- t_vs_tpc_perfomance$Obs[t] <- n
@@ -375,10 +392,12 @@ for (n in n_vec){
            t_vs_tpc_perfomance$Lar[t] <- quantile(tgesdf$adjrecall-tpcdf$adjrecall,p = 0.025)
            #DP mean
            tges_perfomance$dirprecision[t] <- mean(tgesdf$dirprecision)
+           tges_perfomance$intierdirprecision[t] <- mean(tgesdf$intierdirprecision,na.rm = T)
            ges_perfomance$intierdirprecision[t] <- mean(gesdf$intierdirprecision,na.rm = T)
            sim_perfomance$dirprecision[t] <- mean(simpletgesdf$dirprecision)
-           sim_perfomance$intierdirprecision[t] <- mean(simpletgesdf$intierdirprecision)
+           sim_perfomance$intierdirprecision[t] <- mean(simpletgesdf$intierdirprecision,na.rm = T)
            tpc_perfomance$dirprecision[t] <- mean(tpcdf$dirprecision)
+           tpc_perfomance$intierdirprecision[t] <- mean(tpcdf$intierdirprecision,na.rm = T)
            t_vs_ges_perfomance$intierdirprecision[t] <- mean(tgesdf$intierdirprecision-gesdf$intierdirprecision, na.rm = T)
            t_vs_sim_perfomance$dirprecision[t] <- mean(tgesdf$dirprecision-simpletgesdf$dirprecision)
            t_vs_tpc_perfomance$dirprecision[t] <- mean(tgesdf$dirprecision-tpcdf$dirprecision)
@@ -391,10 +410,12 @@ for (n in n_vec){
            t_vs_tpc_perfomance$Ldp[t] <- quantile(tgesdf$dirprecision-tpcdf$dirprecision,p = 0.025)
            #DR mean
            tges_perfomance$dirrecall[t] <- mean(tgesdf$dirrecall)
+           tges_perfomance$intierdirrecall[t] <- mean(tgesdf$intierdirrecall,na.rm = T)
            ges_perfomance$intierdirrecall[t] <- mean(gesdf$intierdirrecall,na.rm = T)
            sim_perfomance$dirrecall[t] <- mean(simpletgesdf$dirrecall)
-           sim_perfomance$intierdirrecall[t] <- mean(simpletgesdf$intierdirrecall)
+           sim_perfomance$intierdirrecall[t] <- mean(simpletgesdf$intierdirrecall,na.rm = T)
            tpc_perfomance$dirrecall[t] <- mean(tpcdf$dirrecall)
+           tpc_perfomance$intierdirrecall[t] <- mean(tpcdf$intierdirrecall,na.rm = T)
            t_vs_ges_perfomance$intierdirrecall[t] <- mean(tgesdf$intierdirrecall-gesdf$intierdirrecall, na.rm = T)
            t_vs_sim_perfomance$dirrecall[t] <- mean(tgesdf$dirrecall-simpletgesdf$dirrecall)
            t_vs_tpc_perfomance$dirrecall[t] <- mean(tgesdf$dirrecall-tpcdf$dirrecall)
@@ -441,8 +462,8 @@ library(xtable)
 table <- data.frame(matrix(NA, nrow = 8, ncol = 4*4))
 cnames <- c()
 par3 <- 1
-method_vec <- c("tges","sim","tpc") #choose relevant methods
-metric <- "dirrecall" #Choose relevant metric
+method_vec <- c("tges","sim","ges","tpc") #choose relevant methods
+metric <- "intierdirrecall" #Choose relevant metric
 for (method in method_vec){
 for (par1 in numno_vec){
   for (par2 in numti_vec){
