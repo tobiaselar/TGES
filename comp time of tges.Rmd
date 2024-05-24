@@ -216,7 +216,7 @@ dftime[i,] <-  c(t_time,g_time[1],pcalg_g_time,tpc_time)
  
  
 }
-#save.image("C:/Users/qfl301/Desktop/Læs/Læs/CompTime.RData")
+#save.image(file = "CompTime.RData")
 ```
 
 ```{r}
@@ -232,8 +232,9 @@ library(ggplot2)
 library(tidyr)
 library(tayloRswift)
 library(patchwork)
+library(cowplot)
 
-theme_set(theme_bw())
+theme_set(theme_cowplot(14))
 ```
 # log transform time
 ```{r}
@@ -274,13 +275,14 @@ df_long$Algorithm <- factor(df_long$Algorithm, levels = c("step_time", "bg_time"
 tayRmod <- tayloRswift::swift_pal(palette = "lover")(n = 6)[c(1,4,6)]
 
 # Plotting with ggplot2
-ggplot(data = df_long, aes(x = Num_nodes, y = Time, color = Algorithm)) +
+p <- ggplot(data = df_long, aes(x = Num_nodes, y = Time, color = Algorithm)) +
   geom_line(lwd =1.2) + # Line plot
   geom_point() + # Add points
   labs(title = "Computational Time over Nodes", x = "Number of Nodes", y = "Time (seconds) of 10 iterations") +
   #ylim(0,450) +
   scale_color_manual(values = tayRmod)
   #scale_color_taylor(palette = "lover")#scale_color_brewer(palette = "Dark2") # Use a color palette for better distinction
+ggsave(filename = "Step_time.png", plot = p, width = 10, height = 20/3)
 ```
 
 ```{r}
@@ -293,12 +295,13 @@ df_long$Algorithm <- factor(df_long$Algorithm, levels = c("step_time", "bg_time"
 tayRmod <- tayloRswift::swift_pal(palette = "lover")(n = 6)[c(1,2)]
 
 # Plotting with ggplot2
-ggplot(data = df_long, aes(x = Num_nodes, y = Time, color = Algorithm)) +
+p <- ggplot(data = df_long, aes(x = Num_nodes, y = Time, color = Algorithm)) +
   geom_line(lwd = 1.2) + # Line plot
   geom_point() + # Add points
   labs(title = "Computational Time over Nodes", x = "Number of Nodes", y = "Time (seconds) of 10 iterations") +
   scale_color_manual(values = tayRmod)
   #scale_color_manual(values = tayRmod)#scale_color_taylor(palette = "lover")#scale_color_brewer(palette = "Dark2") # Use a color palette for better distinction
+ggsave(filename = "TGES_time.png", plot = p, width = 10, height = 20/3)
 ```
 
 ```{r}
@@ -312,11 +315,12 @@ tayRmod <- tayloRswift::swift_pal(palette = "lover")(n = 7)[c(5,4,6,7)]
 
 
 # Plotting with ggplot2
-ggplot(data = df_long, aes(x = Num_nodes, y = Time, color = Algorithm)) +
+p <- ggplot(data = df_long, aes(x = Num_nodes, y = Time, color = Algorithm)) +
   geom_line(lwd = 1.2) + # Line plot
   geom_point() + # Add points
   labs(title = "Computational Time over Nodes", x = "Number of Nodes", y = "Time (seconds) of 10 iterations") +
   scale_color_manual(values = tayRmod)
   #ylim(0,450) +
   #scale_color_taylor(palette = "lover")#scale_color_brewer(palette = "Dark2") # Use a color palette for better distinction
+ggsave(filename = "All_time.png", plot = p, width = 10, height = 20/3)
 ```

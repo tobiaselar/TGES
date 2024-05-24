@@ -259,8 +259,11 @@ library(ggplot2)
 library(tidyr)
 library(tayloRswift)
 library(patchwork)
+library(cowplot)
 
-theme_set(theme_bw())
+theme_set(theme_cowplot(14))
+top <- theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+right <- theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
 ```
 
 #adjancency precision
@@ -306,35 +309,36 @@ p1 <- ggplot(adjpredf_long, aes(x = Method, y = value, fill = Method)) +
         ylab(NULL) +
         scale_fill_manual(values = tayRmod,guide = "none") +
         #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Precision of adjancencies")
-        #+ ylim(0,1)
+        labs(title = "Precision of adjancencies") +
+        ylim(0,1) + top
 p2 <- ggplot(adjrecdf_long, aes(x = Method, y = value, fill = Method)) +
         geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
         xlab(NULL) + 
         ylab(NULL) +
         scale_fill_manual(values = tayRmod,guide = "none") +
         #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Recall of adjancencies")
-        #+ ylim(0,1)
+        labs(title = "Recall of adjancencies") +
+        ylim(0,1)  + top + right
 p3 <- ggplot(dirpredf_long, aes(x = Method, y = value, fill = Method)) +
         geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
         xlab(NULL) + 
         ylab(NULL) +
         scale_fill_manual(values = tayRmod,guide = "none") +
         #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Precision of directions")
-        #+ ylim(0,1)
+        labs(title = "Precision of directions")+
+        ylim(0,1)
 p4 <- ggplot(dirrecdf_long, aes(x = Method, y = value, fill = Method)) +
         geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
         xlab(NULL) + 
         ylab(NULL) +
         scale_fill_manual(values = tayRmod,guide = "none") +
         #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Recall of directions")
-        #+ ylim(0,1)
+        labs(title = "Recall of directions") +
+        ylim(0,1) + right
 # Use patchwork to arrange the plots next to each other
-(p1 + p2 + p3 + p4) +
+p <- (p1 + p2 + p3 + p4) +
   plot_layout(ncol = 2) 
+ggsave(filename = "BoxplotAll.png", plot = p, width = 10, height = 20/3)
 ```
 ```{r}
 # Reshape the data frame to long format
@@ -353,35 +357,32 @@ p1 <- ggplot(adjpredf_long, aes(x = Method, y = value, fill = Method)) +
         ylab(NULL) +
         scale_fill_manual(values = tayRmod,guide = "none") +
         #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Precision of adjancencies")
-        #+ ylim(0,1)
+        labs(title = "Precision of adjancencies") + ylim(0,1) + top
 p2 <- ggplot(adjrecdf_long, aes(x = Method, y = value, fill = Method)) +
         geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
         xlab(NULL) + 
         ylab(NULL) +
         scale_fill_manual(values = tayRmod,guide = "none") +
         #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Recall of adjancencies")
-        #+ ylim(0,1)
+        labs(title = "Recall of adjancencies") + ylim(0,1) + top + right
 p3 <- ggplot(dirpredf_long, aes(x = Method, y = value, fill = Method)) +
         geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
         xlab(NULL) + 
         ylab(NULL) +
         scale_fill_manual(values = tayRmod,guide = "none") +
         #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Precision of directions")
-        #+ ylim(0,1)
+        labs(title = "Precision of directions") + ylim(0,1)
 p4 <- ggplot(dirrecdf_long, aes(x = Method, y = value, fill = Method)) +
         geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
         xlab(NULL) + 
         ylab(NULL) +
         scale_fill_manual(values = tayRmod,guide = "none") +
         #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Recall of directions")
-        #+ ylim(0,1)
+        labs(title = "Recall of directions") + ylim(0,1) + right
 # Use patchwork to arrange the plots next to each other
-(p1 + p2 + p3 + p4) +
+p <- (p1 + p2 + p3 + p4) +
   plot_layout(ncol = 2) 
+ggsave(filename = "BoxplotTPC.png", plot = p, width = 10, height = 20/3)
 ```
 
 ```{r}
@@ -401,35 +402,32 @@ p1 <- ggplot(adjpredf_long, aes(x = Method, y = value, fill = Method)) +
         ylab(NULL) +
         scale_fill_manual(values = tayRmod,guide = "none") +
         #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Precision of adjancencies")
-        #+ ylim(0,1)
+        labs(title = "Precision of adjancencies") + ylim(0,1) + top
 p2 <- ggplot(adjrecdf_long, aes(x = Method, y = value, fill = Method)) +
         geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
         xlab(NULL) + 
         ylab(NULL) +
         scale_fill_manual(values = tayRmod,guide = "none") +
         #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Recall of adjancencies")
-        #+ ylim(0,1)
+        labs(title = "Recall of adjancencies") + ylim(0,1) + top + right
 p3 <- ggplot(dirpredf_long, aes(x = Method, y = value, fill = Method)) +
         geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
         xlab(NULL) + 
         ylab(NULL) +
         scale_fill_manual(values = tayRmod,guide = "none") +
         #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Precision of directions")
-        #+ ylim(0,1)
+        labs(title = "Precision of directions") + ylim(0,1)
 p4 <- ggplot(dirrecdf_long, aes(x = Method, y = value, fill = Method)) +
         geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
         xlab(NULL) + 
         ylab(NULL) +
         scale_fill_manual(values = tayRmod,guide = "none") +
         #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Recall of directions")
-        #+ ylim(0,1)
+        labs(title = "Recall of directions") + ylim(0,1) + right
 # Use patchwork to arrange the plots next to each other
-(p1 + p2 + p3 + p4) +
+p <- (p1 + p2 + p3 + p4) +
   plot_layout(ncol = 2) 
+ggsave(filename = "BoxplotAllMethods.png", plot = p, width = 10, height = 20/3)
 ```
 
 ```{r}
@@ -446,19 +444,19 @@ p1 <- ggplot(adjpredf_long, aes(x = Method, y = value, fill = Method)) +
         ylab(NULL) +
         scale_fill_manual(values = tayRmod,guide = "none") +
         #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Precision of adjancencies")
-        #+ ylim(0,1)
+        labs(title = "Precision of adjancencies") + theme_cowplot(18) + ylim(0,1) + top
 p2 <- ggplot(adjrecdf_long, aes(x = Method, y = value, fill = Method)) +
         geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
         xlab(NULL) + 
         ylab(NULL) +
         scale_fill_manual(values = tayRmod,guide = "none") +
         #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Recall of adjancencies")
-        #+ ylim(0,1)
+        labs(title = "Recall of adjancencies") + theme_cowplot(18) + ylim(0,1)
 # Use patchwork to arrange the plots next to each other
-(p1 + p2) +
+p <- (p1 + p2) +
   plot_layout(ncol = 1) 
+
+ggsave(filename = "BoxplotTgesGesAdj.png", plot = p, width = 20/3, height = 10)
 ```
 
 # comp time
@@ -498,19 +496,18 @@ p5 <- ggplot(intierdirpredf_long, aes(x = Method, y = value, fill = Method)) +
         ylab(NULL) +
         scale_fill_manual(values = tayRmod,guide = "none") +
         #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Precision of in tier directions")
-        #+ ylim(0,1)
+        labs(title = "Precision of in tier directions") + ylim(0,1)
 p6 <- ggplot(intierdirrecdf_long, aes(x = Method, y = value, fill = Method)) +
         geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
         xlab(NULL) + 
         ylab(NULL) +
         scale_fill_manual(values = tayRmod,guide = "none") +
         #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Recall of in tier directions")
-        #+ ylim(0,1)
+        labs(title = "Recall of in tier directions") + ylim(0,1) + right
 # Use patchwork to arrange the plots next to each other
-(p5 + p6) +
+p <- (p5 + p6) +
   plot_layout(ncol = 2) 
+ggsave(filename = "BoxplotInterDirAll.png", plot = p, width = 10, height = 20/3)
 ```
 
 
@@ -530,19 +527,19 @@ p1 <- ggplot(adjpredf_long, aes(x = Method, y = value, fill = Method)) +
         ylab(NULL) +
         scale_fill_manual(values = tayRmod,guide = "none") +
         #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Precision of adjancencies")
-        #+ ylim(0,1)
+        labs(title = "Precision of adjancencies") + ylim(0,1)
 p2 <- ggplot(adjrecdf_long, aes(x = Method, y = value, fill = Method)) +
         geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
         xlab(NULL) + 
         ylab(NULL) +
         scale_fill_manual(values = tayRmod,guide = "none") +
         #scale_fill_taylor(palette = "lover", guide = "none") +
-        labs(title = "Recall of adjancencies")
-        #+ ylim(0,1)
+        labs(title = "Recall of adjancencies") + ylim(0,1) + right
 # Use patchwork to arrange the plots next to each other
-(p1 + p2) +
+p <- (p1 + p2) +
   plot_layout(ncol = 2) 
+
+ggsave(filename = "BoxplotAllAdj.png", plot = p, width = 10, height = 20/3)
 ```
 
 # Violin plots instead of boxplot

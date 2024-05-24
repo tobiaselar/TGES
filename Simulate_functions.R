@@ -1,5 +1,6 @@
 library(RBGL)
 library(causalDisco)
+library(pcalg)
 
 randtierDAG <- function(incpar, accpar, tino, lB = 0, uB = 1){
   numno <- sum(tino)

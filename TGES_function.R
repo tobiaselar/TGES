@@ -1,6 +1,5 @@
 # Load packages
 library(pcalg)
-library(causalDisco)
 # Define new classes
 ## Define new EssGraph class (TEssgraph) with new greedy step that also return new edges added
 
