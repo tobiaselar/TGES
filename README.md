@@ -1,2 +1,5 @@
 # TGES
 Made for thesis at UCPH
+
+Abstract:
+Causal discovery with tiered background knowledge leads to more informative estimations of the true underlying data-generating DAG. In this thesis, we develop two score-based causal discovery algorithms that incorporate tiered background knowledge: Temporal Greedy Equivalence Search (TGES) and Simple Temporal Greedy Equivalence Search (Simple TGES). To be able to define the algorithms, we introduce needed graph theory, relevant score criteria, tiered background knowledge, and Greedy Equivalence Search (GES). We prove that TGES will always estimate a tiered MPDAG and that Simple TGES is sound and complete in the limit of large sample size. The algorithms have been implemented in R. We perform a simulation study, here amongst using a new metric on the performance of causal discovery algorithms. The simulation study shows that TGES outperforms Simple TGES and GES with respect to both adjacencies and orientations of edges. The computational time of TGES is slower than GES but shows potential to become faster. We finish the thesis by discussing the findings and methods used throughout.
