@@ -18,7 +18,6 @@ randtierDAG <- function(incpar, accpar, tino, lB = 0, uB = 1){
       if (tino[i] > 1){
         tempDAG <- r.gauss.pardag(p = tino[i], prob = incpar, lbe = lB, ube = uB, neg.coef = F)
         adjmat[which(tior == i),which(tior == i)] <- t(tempDAG$weight.mat())
-        #createAdjMatrixFromList(tempDAG$.in.edges) 
       }
     }
     # Make across tier edges

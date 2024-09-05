@@ -1,6 +1,7 @@
 # Load packages
 library(pcalg)
 # Define new classes
+
 ## Define new EssGraph class (TEssgraph) with new greedy step that also return new edges added
 
 TEssGraph <- setRefClass("TEssGraph",
@@ -22,8 +23,8 @@ TEssGraph <- setRefClass("TEssGraph",
                                                 score$pp.dat,
                                                 alg.name,
                                                 score$c.fcn,
-                                                causal.inf.options(caching = FALSE, #Why not true (TOBIAS NOTE)
-                                                                   maxSteps = 1, #Could be more? (Tobias NOTE). If no maxSteps algorithm continue untill no further improvement (no need for while loop)
+                                                causal.inf.options(caching = FALSE,
+                                                                   maxSteps = 1, 
                                                                    verbose = verbose,
                                                                    #adaptive = "none", #added by TOBIAS
                                                                    ...))
@@ -36,9 +37,8 @@ TEssGraph <- setRefClass("TEssGraph",
                                names(.in.edges) <<- .nodes
                                
                                new.in.edges <- .in.edges[sapply(names(.in.edges), function(x) !identical(.in.edges[[x]], last.edges[[x]]))]
-                               
-                               #new.in.edges <- .in.edges[!(.in.edges %in% last.edges)]
-                               #returns if any new edges have been added. (Also returns if a edge have been removed and theres still an edge going in to this note. Can be fixed by not doing it for "backward")
+                               #returns if any new edges have been added. (Also returns if an edge have been removed and 
+                               #there still is an edge going in to this node.)
                              }
                              else
                                new.in.edges <- list()
@@ -51,25 +51,19 @@ TEssGraph <- setRefClass("TEssGraph",
 
 ## Define score for tges (TBIC)
 
-
 setRefClass("GaussL0penIntScoreORDER",
             contains = "GaussL0penIntScore",
             
             fields = list( 
               .order = "vector"),
             
-            #validity = function(object) {
-            #Define something to check validity of "ORDER" TODO
-            #},
-            
             methods = list(
-              #' Constructor
               initialize = function(data = matrix(1, 1, 1),
                                     nodes = colnames(data),
                                     lambda = 0.5*log(nrow(data)),
                                     intercept = TRUE,
                                     format = c("raw", "scatter"),
-                                    use.cpp = TRUE,
+                                    use.cpp = FALSE, 
                                     order = rep(1,ncol(data)),
                                     ...) {
                 .order <<- order
@@ -93,7 +87,7 @@ setRefClass("GaussL0penIntScoreORDER",
                 validate.parents(parents)
                 order <- .order
                 if (order[vertex] >= max(c(order[parents],-Inf))){
-                  #Checks if parents are before or same
+                  #Checks if the tier of parents are before or same as node
                   
                   if (c.fcn == "none") {
                     ## Calculate score in R
@@ -134,11 +128,11 @@ setRefClass("GaussL0penIntScoreORDER",
                       pp.dat$lambda*(1 + length(parents))
                     #print(c(lscore,"v",vertex,"p",parents))
                     return(lscore)
-                    #return(0)
                   } else {
-                    ## Calculate score with the C++ library
-                    .Call(localScore, c.fcn, pp.dat, vertex, parents, c.fcn.options(...))
-                  } # IF c.fcn
+                    ## Calculate score with the C++ library (NOT ABLE TO DO THIS YET)
+                    #.Call(localScore, c.fcn, pp.dat, vertex, parents, c.fcn.options(...))
+                    stop("Not able to compute using C++. Set use.cpp = FALSE")
+                  } 
                 }
                 else { skip <- -Inf
                 #print(c(skip,"v",vertex,"p",parents))
@@ -149,6 +143,7 @@ setRefClass("GaussL0penIntScoreORDER",
 
 
 # Define new functions
+
 ## transform list of type .in.edges to adjancency matrix
 
 createAdjMatrixFromList <- function(inputList) {
@@ -172,8 +167,7 @@ createAdjMatrixFromList <- function(inputList) {
   return(resultMatrix)
 }
 
-
-## Adjancency matrix to .in.edges list
+## Adjancency matrix to .in.edges list for an essgraph
 
 createListFromAdjMatrix <- function(adjMatrix) {
   # Get the number of rows (or columns, since it's n x n) in the adjacency matrix
@@ -200,30 +194,29 @@ createListFromAdjMatrix <- function(adjMatrix) {
   return(resultList)
 }
 
-tges <- function(score,order = rep(1,score$pp.dat$vertex.count), #set default order as all 1, add 
-                 verbose = FALSE){
+tges <- function(score, verbose = FALSE){
   node.numbers <- 1:score$pp.dat$vertex.count
   essgraph <- new("TEssGraph", nodes = as.character(node.numbers), score = score)
   Forbidden.edges <- essgraph$.in.edges #list of nodes all with integer(0) entry
   node.names <- score$.nodes
   num.bidir <- 0
   num.directed <- 0
+  order <- score$.order
   for (n in node.numbers){
     Forbidden.edges[[n]] <- node.numbers[order[n]<order]
   }
   
-  #bgx <- c(rep(1,4),rep(2,4),rep(3,2),rep(4,2))
-  #bgy <- c(rep(c(3,4,5,6),2),rep(c(5,6),2))
-  
   cont <- TRUE
   while(cont) {
     cont <- FALSE
+    
+    #Forward phase
     runwhile <- TRUE
     while(runwhile){
       tempstep <- essgraph$greedy.step("forward", verbose = verbose)
-      runwhile <- as.logical(tempstep[1]) #Runs 1 extra round of while loops, but equally as many calls of the greedy.step
+      runwhile <- as.logical(tempstep[1])
       if (runwhile){cont <- TRUE}
-      
+      else break
       
       for (i in names(tempstep[-1])){ #Run through the nodes that have been changed
         in.node.edges <- tempstep[-1][[i]] #save the in.node edges of node i
@@ -236,29 +229,16 @@ tges <- function(score,order = rep(1,score$pp.dat$vertex.count), #set default or
           no.forbidden.edges <- createListFromAdjMatrix(amatbg)
           essgraph$.in.edges <- no.forbidden.edges
         }
-        
-        
-        # forbidden.node.edges <- Forbidden.edges[[as.numeric(i)]] #save forbidden node edges for i
-        # no.forbidden.edges <- in.node.edges[!in.node.edges %in% forbidden.node.edges] #save all not forbidden edges for node i
-        # removed.edges <- in.node.edges[in.node.edges %in% forbidden.node.edges] #List of edges to be removed
-        # if (verbose & length(removed.edges > 0)){
-        #   removed.bidir <- removed.edges[sapply(removed.edges,function(x) i %in% essgraph$.in.edges[[x]])] #All removed edges which were a bidirected edge in the CPDAG
-        #   removed.directed <- setdiff(removed.edges,removed.bidir) #All removed edges which were directed in the CPDAG
-        #   if(length(removed.bidir) > 0){
-        #     cat("Directed the cross tier bidirected edge(s) to go from" ,node.names[as.numeric(i)], "into",node.names[removed.bidir],"\n")
-        #     num.bidir <- num.bidir + length(removed.bidir)}
-        #   if (length(removed.directed) > 0){
-        #     cat("Removed the cross tier directed edge(s) from" ,node.names[removed.directed], "into",node.names[as.numeric(i)],"\n")
-        #     num.directed <- num.directed + length(removed.directed)}
-        # }
-        # essgraph$.in.edges[[i]] <- no.forbidden.edges #save the new in.edges without forbidden
       }
-    } 
+    }
+    
+    #Backward phase
     runwhile <- TRUE
     while(runwhile){
       tempstep <- essgraph$greedy.step("backward", verbose = verbose)
-      runwhile <- as.logical(tempstep[1]) #Runs 1 extra round of while loops, but equally as many calls of the greedy.step
+      runwhile <- as.logical(tempstep[1]) 
       if (runwhile){cont <- TRUE}
+      else break
       
       for (i in names(tempstep[-1])){ #Run through the nodes that have been changed
         in.node.edges <- tempstep[-1][[i]] #save the in.node edges of node i
@@ -271,31 +251,16 @@ tges <- function(score,order = rep(1,score$pp.dat$vertex.count), #set default or
           no.forbidden.edges <- createListFromAdjMatrix(amatbg)
           essgraph$.in.edges <- no.forbidden.edges
         }
-        
-        # for (i in names(tempstep[-1])){ #Run through the nodes that have been changed
-        #   in.node.edges <- tempstep[-1][[i]] #save the in.node edges of node i
-        #   forbidden.node.edges <- Forbidden.edges[[as.numeric(i)]] #save forbidden node edges for i
-        #   no.forbidden.edges <- in.node.edges[!in.node.edges %in% forbidden.node.edges] #save all not forbidden edges for node i
-        #   removed.edges <- in.node.edges[in.node.edges %in% forbidden.node.edges] #List of edges to be removed
-        #   if (verbose & length(removed.edges > 0)){
-        #     removed.bidir <- removed.edges[sapply(removed.edges,function(x) i %in% essgraph$.in.edges[[x]])] #All removed edges which were a bidirected edge in the CPDAG
-        #     removed.directed <- setdiff(removed.edges,removed.bidir) #All removed edges which were directed in the CPDAG
-        #     if(length(removed.bidir) > 0){
-        #       cat("Directed the cross tier bidirected edge(s) to go from" ,node.names[as.numeric(i)], "into",node.names[removed.bidir],"\n")
-        #       num.bidir <- num.bidir + length(removed.bidir)}
-        #     if (length(removed.directed) > 0){
-        #       cat("Removed the cross tier directed edge(s) from" ,node.names[removed.directed], "into",node.names[as.numeric(i)],"\n")
-        #       num.directed <- num.directed + length(removed.directed)}
-        #   }
-        #   essgraph$.in.edges[[i]] <- no.forbidden.edges #save the new in.edges without forbidden
       }
     }
-    #while(as.logical(essgraph$greedy.step("backward", verbose = verbose)[1])) cont <- TRUE
+    
+    #Turning phase
     runwhile <- TRUE
     while(runwhile){
       tempstep <- essgraph$greedy.step("turning", verbose = verbose)
-      runwhile <- as.logical(tempstep[1]) #Runs 1 extra round of while loops, but equally as many calls of the greedy.step
+      runwhile <- as.logical(tempstep[1]) 
       if (runwhile){cont <- TRUE}
+      else break
       
       for (i in names(tempstep[-1])){ #Run through the nodes that have been changed
         in.node.edges <- tempstep[-1][[i]] #save the in.node edges of node i
@@ -311,14 +276,9 @@ tges <- function(score,order = rep(1,score$pp.dat$vertex.count), #set default or
         
       }
     }
-    #while(as.logical(essgraph$greedy.step("turning", verbose = verbose)[1])) {cont <- TRUE}
   }
   essgraph$.nodes <- node.names # Save names of nodes
   names(essgraph$.in.edges) <- node.names # Save names of nodes
-  #adjmat <- createAdjMatrixFromList(essgraph$.in.edges) # Create adjacency matrix from in.edges list
-  #bg <- addBgKnowledge(adjmat, checkInput = F, verbose = verbose) #Run all 4 meek rules to obtain MPDAG adjancency matrix
-  #essgraph$.in.edges <- createListFromAdjMatrix(bg) #Convert new MPDAG matrix back to list of in edges and save as new in edges list
   if (verbose){cat("Number of edges directed", num.bidir,"\nNumber of directed edges removed", num.directed, "\n")}
   return(essgraph)
 }
-
