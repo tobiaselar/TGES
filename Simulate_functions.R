@@ -2,7 +2,7 @@ library(RBGL)
 library(causalDisco)
 library(pcalg)
 
-randtierDAG <- function(incpar, accpar, tino, lB = 0, uB = 1){
+randtierDAG <- function(incpar, accpar, tino, lB = 0, uB = 1, NoEmptyDAG = T){
   numno <- sum(tino)
   adjmat <- matrix(0,nrow = numno,ncol = numno)
   #tier order
@@ -26,7 +26,7 @@ randtierDAG <- function(incpar, accpar, tino, lB = 0, uB = 1){
       tier <- which(tior == n)
       adjmat[plustier,tier] <- rbinom(n = length(plustier)*length(tier), size = 1,prob = accpar)*runif(length(plustier)*length(tier), min = lB, max = uB)
     }
-    emptyDAG <- (sum(adjmat) == 0)
+    emptyDAG <- ifelse(NoEmptyDAG,(sum(adjmat) == 0),F)
     
   }
   
@@ -42,7 +42,7 @@ rmvTDAG <- function(n, DAG){
   return(data)
 }
 
-ges_to_simple_tges_adj <- function(ges_fit_f,ord_f){
+ges_to_stges_rem_adj <- function(ges_fit_f,ord_f){
   cpadjmat <- t(as(ges_fit_f$essgraph,"matrix")) #t(as(dag2cpdag(ges_fit_f$repr), "matrix")) 
   num_of_nodes <- length(ord_f)
   node.numbers <- 1:num_of_nodes
@@ -53,6 +53,24 @@ ges_to_simple_tges_adj <- function(ges_fit_f,ord_f){
   adjmat_return <- addBgKnowledge(cpadjmat*!Forbidden.edges.matrix, checkInput = F)
   return(adjmat_return)  
 }
+
+
+ges_to_stges_rev_adj <- function(ges_fit_f,ord_f){
+  cpadjmat <- t(as(ges_fit_f$essgraph,"matrix")) #t(as(dag2cpdag(ges_fit_f$repr), "matrix")) 
+  num_of_nodes <- length(ord_f)
+  node.numbers <- 1:num_of_nodes
+  Forbidden.edges.matrix <- matrix(0,ncol = num_of_nodes, nrow = num_of_nodes)
+  for (nod in node.numbers){
+    Forbidden.edges.matrix[nod,] <- ord_f[nod]<ord_f
+  }
+  #Edges that are removed
+  removed_edges <- cpadjmat*Forbidden.edges.matrix 
+  #Adds the reversed edge of every edge that is removed
+  adjmat_reversed <- (0 < (cpadjmat*!Forbidden.edges.matrix) + (t(removed_edges)))
+  adjmat_return <- addBgKnowledge(adjmat_reversed, checkInput = F)
+  return(adjmat_return)  
+}
+
 
 # Overwrite causalDisco confusion "directional" function
 dir_confusion <- function(est_amat, true_amat) {
