@@ -1,0 +1,412 @@
+---
+title: "Simulation study - article"
+output: html_document
+date: "2024-09-30"
+---
+# Packages
+Load packages
+```{r}
+library(tpc)
+library(conflicted)
+conflict_prefer("tpc", "tpc")
+source("TGES_function.R")
+source("Simulate_functions.R")
+library(doParallel)
+registerDoParallel(cores = detectCores())
+```
+
+```{r}
+#Number of simulations
+k <- 10000
+# Runs in a loop
+p <- 100
+k <- k/p
+```
+
+
+# Set dataframe
+```{r}
+#Num_values <- 7*8+2
+  #7 methods (TGES, GES, STGES_remove, STGES_reverse, TPC01, TPC001, TPC0001)
+  #with 8 metrics (adjacency, direction, in tier direction)*(recall, precision) + (comptime) + (shd)
+  # plus 2 randomised parameters (Number of edges, number of nodes)
+
+# Define the vectors
+type <- c("adj", "dir", "int")
+metric <- c("pre", "rec")
+methods <- c("TGES","GES","STGESREM","STGESREV","TPC01","TPC001","TPC0001")
+
+# Generate all combinations
+type_metric <- c(as.vector(outer(type, metric, paste, sep = "_")),"CompTime","SHD")
+combinations <- c("NumEdges","NumNodes",as.vector(outer(methods, type_metric, paste, sep = "_")))
+num_comb <- length(combinations)
+
+df <- data.frame(matrix(NA,k,num_comb))
+colnames(df) <- combinations
+
+save_df <- data.frame(matrix(NA,0,num_comb))
+colnames(save_df) <- combinations
+```
+
+
+```{r}
+n <- 10000 # sample size
+lB <- 0
+uB <- 1
+sparsity_min_max <- c(0.1,0.8) #Sparsity of data-generating DAG
+nodes_min_max <- c(7,20) #Number of variables/nodes in graph
+num_ti <- 3 #Number of tiers, fixed to 3
+```
+
+# Save seeds for reproducibility
+```{r}
+set.seed(2200)
+seed_vec <- sample(1:2^15, k*p, replace = F)
+```
+
+# Run for loop with parallelization inside
+```{r}
+#load(file = "boxplotdata_10k.Rdata")
+start_time <- Sys.time()
+for (k100 in 1:p){
+df <- foreach(i = 1:k,#Probs with k100 = 4 and i =100 for ges ikke de andre
+                   .combine = 'rbind',
+                   .packages = c("pcalg","graph","RBGL","tpc","causalDisco","conflicted")
+                   ) %dopar% {
+          #Preliminary
+          conflict_prefer("tpc", "tpc")
+          source("TGES_function.R")
+          source("Simulate_functions.R")
+          set.seed(seed_vec[(k100-1)*k+i])
+          vec <- data.frame(matrix(NA,1,num_comb))
+          colnames(vec) <- combinations 
+                               
+          spars <- runif(1,sparsity_min_max[1],sparsity_min_max[2])
+          num_no <- sample(nodes_min_max[1]:nodes_min_max[2],1)
+          vec$NumNodes <- num_no
+          
+          tior <- sort(c(sample(c(1:num_ti),(num_no-num_ti),replace = T),1:num_ti))
+          tino <- c()
+          for (o in 1:num_ti){
+            tino <- c(tino,sum(tior == o))
+          }
+            
+            weightadjmat <- randtierDAG(spars,spars,tino, lB = lB, uB = uB)
+            
+              
+            data <- rmvTDAG(n, weightadjmat)
+            adjmat <- ceiling(weightadjmat/uB)
+            vec$NumEdges <- sum(adjmat)
+            T_adjmat <- dag2tmpdag(adjmatrix = adjmat,odr = tior)
+            
+            t_score <- new("GaussL0penIntScoreORDER", order = tior
+                            , data = data)
+            
+            ges_score <- new("GaussL0penObsScore", data = data)#new("GaussL0penIntScoreORDER", data = data)
+            
+            
+            #TGES
+            TGES_start_time <- Sys.time()
+            TGES_fit <- tges(t_score)
+            TGES_adjmat <- createAdjMatrixFromList(TGES_fit$.in.edges)
+            TGES_end_time <- Sys.time()
+            vec$TGES_CompTime <- (TGES_end_time - TGES_start_time)
+            
+            #GES
+            GES_start_time <- Sys.time()
+            GES_fit <- ges(ges_score)
+            GES_adjmat <- createAdjMatrixFromList(GES_fit$essgraph$.in.edges)
+            GES_end_time <- Sys.time()
+            vec$GES_CompTime <-(GES_end_time - GES_start_time)
+            
+            #STGESREM
+            STGESREM_start_time <- Sys.time()
+            STGESREM_adjmat <- ges_to_stges_rem_adj(GES_fit, tior)
+            STGESREM_end_time <- Sys.time()
+            vec$STGESREM_CompTime <- (STGESREM_end_time - STGESREM_start_time)
+            
+            #STGESREV
+            STGESREV_start_time <- Sys.time()
+            STGESREV_adjmat <- ges_to_stges_rev_adj(GES_fit, tior)
+            STGESREV_end_time <- Sys.time()
+            vec$STGESREV_CompTime <- (STGESREV_end_time - STGESREV_start_time)
+            
+            #TPC
+            ## 0.1
+            TPC01_start_time <- Sys.time()
+            TPC01_fit <- tpc(suffStat = list(C = cor(data), n = n),
+                           indepTest = gaussCItest, alpha = 0.1, tiers = tior, p = num_no)
+            TPC01_adjmat <- as(TPC01_fit, "matrix")
+            TPC01_end_time <- Sys.time()
+            vec$TPC01_CompTime <- (TPC01_end_time - TPC01_start_time)
+            
+            ## 0.01
+            TPC001_start_time <- Sys.time()
+            TPC001_fit <- tpc(suffStat = list(C = cor(data), n = n),
+                           indepTest = gaussCItest, alpha = 0.01, tiers = tior, p = num_no)
+            TPC001_adjmat <- as(TPC001_fit, "matrix")
+            TPC001_end_time <- Sys.time()
+            vec$TPC001_CompTime <- (TPC001_end_time - TPC001_start_time)
+            
+            ## 0.001
+            TPC0001_start_time <- Sys.time()
+            TPC0001_fit <- tpc(suffStat = list(C = cor(data), n = n),
+                           indepTest = gaussCItest, alpha = 0.0001, tiers = tior, p = num_no)
+            TPC0001_adjmat <- as(TPC0001_fit, "matrix")
+            TPC0001_end_time <- Sys.time()
+            vec$TPC0001_CompTime <- (TPC0001_end_time - TPC0001_start_time)
+            
+            
+            # Compute confusion matrices and metrics
+            for (meth in methods){
+              adjconf <- confusion(get(paste(meth,"adjmat",sep = "_")),T_adjmat, type = "adj")
+              dirconf <- confusion(get(paste(meth,"adjmat",sep = "_")),T_adjmat, type = "dir")
+              intconf <- intier_confusion(get(paste(meth,"adjmat",sep = "_")),T_adjmat, type = "dir", tior)
+              vec[,paste(meth,"SHD",sep = "_")] <- causalDisco::shd(get(paste(meth,"adjmat",sep = "_")),T_adjmat)
+                for (metr in metric){
+                  metr_func <- switch(metr, "rec" = "recall","pre" = "precision")
+                  vec[,paste(meth,"adj",metr,sep = "_")] <- get(metr_func)(adjconf)
+                  vec[,paste(meth,"dir",metr,sep = "_")] <- get(metr_func)(dirconf)
+                  vec[,paste(meth,"int",metr,sep = "_")] <- get(metr_func)(intconf)
+                  
+                }
+            }
+            i <- i+1
+            return(vec)
+                   }
+save_df <- rbind(save_df,df)
+save(save_df,file = "boxplotdata_10k.Rdata")
+print(k100)
+print(Sys.time())
+}
+
+          
+end_time <- Sys.time()
+execution_time <- end_time - start_time
+print(execution_time)
+#save.image(file = "boxplotdata.Rdata")
+```
+
+
+```{r}
+#load(file = "boxplotdata.Rdata")
+```
+
+
+# Create plots
+
+## Packages and theme
+```{r}
+library(ggplot2)
+library(tidyr)
+library(tayloRswift)
+library(cowplot)
+library(patchwork)
+df <- save_df
+
+theme_set(theme_cowplot(14))
+
+top <- theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+right <- theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+```
+
+
+## Format data frame
+
+```{r}
+adjpre_df <- df[,3:9]
+dirpre_df <- df[,10:16]
+intpre_df <- df[,17:23]
+adjrec_df <- df[,24:30]
+dirrec_df <- df[,31:37]
+intrec_df <- df[,38:44]
+
+colnames(intrec_df) <- colnames(dirrec_df) <- colnames(adjrec_df) <- colnames(intpre_df) <- colnames(dirpre_df) <- colnames(adjpre_df) <- methods
+```
+
+
+```{r}
+#Make data frames long format
+adjpre_long <- pivot_longer(adjpre_df, cols = everything(),names_to = "Method", values_to = "value")
+dirpre_long <- pivot_longer(dirpre_df, cols = everything(),names_to = "Method", values_to = "value")
+intpre_long <- pivot_longer(intpre_df, cols = everything(),names_to = "Method", values_to = "value")
+adjrec_long <- pivot_longer(adjrec_df, cols = everything(),names_to = "Method", values_to = "value")
+dirrec_long <- pivot_longer(dirrec_df, cols = everything(),names_to = "Method", values_to = "value")
+intrec_long <- pivot_longer(intrec_df, cols = everything(),names_to = "Method", values_to = "value")
+```
+
+```{r}
+p1 <- ggplot(adjpre_long, aes(x = Method, y = value, fill = Method)) +
+        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        #scale_fill_manual(values = tayRmod,guide = "none") +
+        scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Precision of adjancencies") +
+        ylim(0,1)# + top
+p2 <- ggplot(adjrec_long, aes(x = Method, y = value, fill = Method)) +
+        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        #scale_fill_manual(values = tayRmod,guide = "none") +
+        scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Recall of adjancencies") +
+        ylim(0,1) # + top + right
+p3 <- ggplot(dirpre_long, aes(x = Method, y = value, fill = Method)) +
+        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        #scale_fill_manual(values = tayRmod,guide = "none") +
+        scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Precision of directions")+
+        ylim(0,1) #+ top
+p4 <- ggplot(dirrec_long, aes(x = Method, y = value, fill = Method)) +
+        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        #scale_fill_manual(values = tayRmod,guide = "none") +
+        scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Recall of directions") +
+        ylim(0,1)# + right + top
+p5 <- ggplot(intpre_long, aes(x = Method, y = value, fill = Method)) +
+        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        #scale_fill_manual(values = tayRmod,guide = "none") +
+        scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Precision of in-tier directions") +
+        ylim(0,1) 
+p6 <- ggplot(intrec_long, aes(x = Method, y = value, fill = Method)) +
+        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        #scale_fill_manual(values = tayRmod,guide = "none") +
+        scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Recall of in-tier directions") +
+        ylim(0,1) #+ right
+# Use patchwork to arrange the plots next to each other
+p <- (p1 + p2 + p3 + p4 + p5 + p6) +
+  plot_layout(ncol = 2)
+p
+#ggsave(filename = "BoxplotAll.png", plot = p, width = 10, height = 20/3)
+
+```
+Plot only TPC
+```{r}
+adjpre_long <- pivot_longer(adjpre_df, cols = c(TPC01,TPC001,TPC0001),names_to = "Method", values_to = "value")
+dirpre_long <- pivot_longer(dirpre_df, cols = c(TPC01,TPC001,TPC0001),names_to = "Method", values_to = "value")
+intpre_long <- pivot_longer(intpre_df, cols = c(TPC01,TPC001,TPC0001),names_to = "Method", values_to = "value")
+adjrec_long <- pivot_longer(adjrec_df, cols = c(TPC01,TPC001,TPC0001),names_to = "Method", values_to = "value")
+dirrec_long <- pivot_longer(dirrec_df, cols = c(TPC01,TPC001,TPC0001),names_to = "Method", values_to = "value")
+intrec_long <- pivot_longer(intrec_df, cols = c(TPC01,TPC001,TPC0001),names_to = "Method", values_to = "value")
+p1 <- ggplot(adjpre_long, aes(x = Method, y = value, fill = Method)) +
+        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        #scale_fill_manual(values = tayRmod,guide = "none") +
+        scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Precision of adjancencies") +
+        ylim(0,1) + top
+p2 <- ggplot(adjrec_long, aes(x = Method, y = value, fill = Method)) +
+        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        #scale_fill_manual(values = tayRmod,guide = "none") +
+        scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Recall of adjancencies") +
+        ylim(0,1)  + top + right
+p3 <- ggplot(dirpre_long, aes(x = Method, y = value, fill = Method)) +
+        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        #scale_fill_manual(values = tayRmod,guide = "none") +
+        scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Precision of directions")+
+        ylim(0,1) + top
+p4 <- ggplot(dirrec_long, aes(x = Method, y = value, fill = Method)) +
+        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        #scale_fill_manual(values = tayRmod,guide = "none") +
+        scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Recall of directions") +
+        ylim(0,1) + right + top
+p5 <- ggplot(intpre_long, aes(x = Method, y = value, fill = Method)) +
+        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        #scale_fill_manual(values = tayRmod,guide = "none") +
+        scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Precision of in-tier directions") +
+        ylim(0,1) 
+p6 <- ggplot(intrec_long, aes(x = Method, y = value, fill = Method)) +
+        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        #scale_fill_manual(values = tayRmod,guide = "none") +
+        scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Recall of in-tier directions") +
+        ylim(0,1) + right
+# Use patchwork to arrange the plots next to each other
+p <- (p1 + p2 + p3 + p4 + p5 + p6) +
+  plot_layout(ncol = 2)
+p
+#ggsave(filename = "BoxplotTPC.png", plot = p, width = 10, height = 20/3)
+```
+
+# comp time
+```{r}
+comptime_df <- df[,45:51]
+colnames(comptime_df) <- methods
+```
+```{r}
+comptime_long <- pivot_longer(comptime_df, cols = everything(),names_to = "Method", values_to = "value")
+
+p <- ggplot(comptime_long, aes(x = Method, y = value, fill = Method)) +
+        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        #scale_fill_manual(values = tayRmod,guide = "none") +
+        scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Computational time") 
+p
+#ggsave(filename = "BoxplotCompTime.png", plot = p, width = 10, height = 20/3)
+```
+
+# Structual Hamming Distance
+```{r}
+SHD_df <- df[,52:58]
+colnames(SHD_df) <- methods
+```
+
+```{r}
+SHD_long <- pivot_longer(SHD_df, cols = everything(),names_to = "Method", values_to = "value")
+
+p <- ggplot(SHD_long, aes(x = Method, y = value, fill = Method)) +
+        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        #scale_fill_manual(values = tayRmod,guide = "none") +
+        scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Structual Hamming Distance") 
+p
+```
+
+## Here standardized by the number of edges
+```{r}
+SHD_std_df <- df[,52:58]/df[,1]
+colnames(SHD_std_df) <- methods
+```
+
+```{r}
+SHD_std_long <- pivot_longer(SHD_std_df, cols = everything(),names_to = "Method", values_to = "value")
+
+p <- ggplot(SHD_std_long, aes(x = Method, y = value, fill = Method)) +
+        geom_boxplot(alpha = 0.6) + # Adjust alpha for transparency
+        xlab(NULL) + 
+        ylab(NULL) +
+        #scale_fill_manual(values = tayRmod,guide = "none") +
+        scale_fill_taylor(palette = "lover", guide = "none") +
+        labs(title = "Structual Hamming Distance") 
+p
+```
